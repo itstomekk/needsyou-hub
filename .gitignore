@@ -1,0 +1,13 @@
+# Deny by default: only the files listed below are ever tracked.
+/*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/DEVELOPMENT.md
+!/UPDATING.md
+!/plugin.js
+!/test.mjs
+!/docs/
+!/docs/**
+!/.github/
+!/.github/**

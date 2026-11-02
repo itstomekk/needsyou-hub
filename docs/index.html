@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs You Hub: one page for every question your Hermes sessions ask</title>
+<meta name="description" content="A Hermes desktop plugin that collects every pending question and approval from all your live sessions onto one page, so you can answer them in one place.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Needs You Hub">
+<meta property="og:description" content="One page for every question your Hermes sessions ask.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --paper: #f5efe3;
+    --paper-2: #ebe3d2;
+    --ink: #1c1915;
+    --ink-soft: #554f44;
+    --line: #cfc5b0;
+    --amber: #a8400a;
+    --amber-bg: #ffe2c2;
+    --card: #fffaf0;
+    --code-bg: #1c1915;
+    --code-ink: #f5efe3;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16130f;
+      --paper-2: #1f1b15;
+      --ink: #f3ecdd;
+      --ink-soft: #b9b09d;
+      --line: #3a3429;
+      --amber: #ffa24c;
+      --amber-bg: #3b2410;
+      --card: #1d1912;
+      --code-bg: #0c0a07;
+      --code-ink: #f3ecdd;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 1.0625rem/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--amber); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; border-radius: 4px; }
+  .skip { position: absolute; left: -999px; top: 0; background: var(--ink); color: var(--paper); padding: .6rem 1rem; z-index: 10; }
+  .skip:focus { left: 0; }
+  .wrap { width: min(1120px, 100% - 2.5rem); margin-inline: auto; }
+
+  header.top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.25rem 0; }
+  .brand { font: 700 1.05rem var(--serif); letter-spacing: .01em; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: .55rem; }
+  .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px var(--amber-bg); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px transparent; } }
+  nav.links { display: flex; gap: 1.25rem; font-size: .95rem; }
+  nav.links a { color: var(--ink-soft); text-decoration: none; }
+  nav.links a:hover { color: var(--amber); text-decoration: underline; }
+
+  .hero { padding: 3.5rem 0 2.5rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font: 600 .85rem var(--mono); color: var(--amber);
+    background: var(--amber-bg); border: 1px solid var(--amber);
+    padding: .3rem .8rem; border-radius: 999px;
+  }
+  h1 {
+    font: 700 clamp(2.4rem, 6.2vw, 4.6rem)/1.04 var(--serif);
+    letter-spacing: -.02em; margin: 1.1rem 0 1.2rem; max-width: 16ch;
+  }
+  h1 em { font-style: italic; color: var(--amber); }
+  .lede { font-size: 1.25rem; max-width: 46ch; color: var(--ink-soft); margin: 0 0 1.8rem; }
+  .cta { display: flex; flex-wrap: wrap; gap: .8rem; }
+  .btn {
+    display: inline-block; padding: .75rem 1.3rem; border-radius: 8px;
+    font-weight: 600; text-decoration: none; border: 2px solid var(--ink);
+    transition: transform .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.ghost { color: var(--ink); background: transparent; }
+
+  figure.shot { margin: 2.5rem 0 0; }
+  .frame {
+    border: 2px solid var(--ink); border-radius: 12px; overflow: hidden;
+    background: var(--paper-2); box-shadow: 10px 10px 0 var(--amber);
+  }
+  .bar { display: flex; gap: .4rem; padding: .6rem .8rem; border-bottom: 2px solid var(--ink); background: var(--card); }
+  .bar i { width: .65rem; height: .65rem; border-radius: 50%; border: 2px solid var(--ink); display: block; }
+  .frame img { display: block; width: 100%; height: auto; aspect-ratio: 1389 / 1159; object-fit: cover; background: var(--paper-2); color: var(--ink-soft); }
+  figcaption { margin-top: 1.6rem; font-size: .95rem; color: var(--ink-soft); }
+
+  section { padding: 3.5rem 0; border-top: 1px solid var(--line); }
+  h2 { font: 700 clamp(1.7rem, 3.5vw, 2.3rem)/1.15 var(--serif); letter-spacing: -.01em; margin: 0 0 2rem; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; list-style: none; padding: 0; margin: 0; counter-reset: f; }
+  .features li { counter-increment: f; background: var(--card); border: 2px solid var(--ink); border-radius: 12px; padding: 1.5rem; }
+  .features li::before { content: "0" counter(f); font: 700 2.6rem/1 var(--serif); color: var(--amber); display: block; margin-bottom: .6rem; }
+  .features h3 { font: 700 1.25rem var(--serif); margin: 0 0 .5rem; }
+  .features p { margin: 0; color: var(--ink-soft); }
+
+  .steps { display: grid; grid-template-columns: 1fr 1.25fr; gap: 2.5rem; align-items: start; }
+  .steps > * { min-width: 0; }
+  ol.s { padding-left: 1.2rem; margin: 0; }
+  ol.s li { margin-bottom: .9rem; padding-left: .3rem; }
+  ol.s li::marker { color: var(--amber); font-weight: 700; }
+  kbd { font: .9em var(--mono); background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; padding: .05em .4em; border-radius: 4px; }
+  code { font-family: var(--mono); font-size: .92em; }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-ink); padding: 1.2rem 1.3rem; border-radius: 10px; overflow-x: auto; font: .88rem/1.65 var(--mono); border: 2px solid var(--ink); }
+  pre .c { color: #9c9482; }
+  .note { font-size: .92rem; color: var(--ink-soft); margin-top: .8rem; }
+
+  ul.limits { margin: 0; padding-left: 1.2rem; max-width: 70ch; }
+  ul.limits li { margin-bottom: .6rem; }
+
+  footer { border-top: 1px solid var(--line); padding: 2rem 0 3rem; color: var(--ink-soft); font-size: .95rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+
+  @media (max-width: 760px) {
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    nav.links { display: none; }
+    .frame { box-shadow: 6px 6px 0 var(--amber); }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#"><span class="dot" aria-hidden="true"></span>Needs You Hub</a>
+    <nav class="links" aria-label="Page">
+      <a href="#features">What it does</a>
+      <a href="#install">Install</a>
+      <a href="#limits">Limits</a>
+      <a href="https://github.com/itstomekk/needsyou-hub">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="hero">
+      <span class="chip" aria-hidden="true">needs you 3</span>
+      <h1>One page for every question your <em>Hermes</em> sessions ask.</h1>
+      <p class="lede">Run several sessions at once and one of them will stop and wait for you. Needs You Hub gathers every pending question and approval onto a single page, so you answer them in one place.</p>
+      <div class="cta">
+        <a class="btn primary" href="#install">Install it</a>
+        <a class="btn ghost" href="https://github.com/itstomekk/needsyou-hub">View on GitHub</a>
+      </div>
+
+      <figure class="shot">
+        <div class="frame">
+          <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <img src="img/needs-you-hub.png" width="1389" height="1159" alt="The Needs You page in the Hermes desktop app: question cards waiting for an answer, then a Working section and a Done section.">
+        </div>
+        <figcaption>The Needs You page inside the Hermes desktop app.</figcaption>
+      </figure>
+    </div>
+
+    <section id="features" aria-labelledby="f-h">
+      <h2 id="f-h">What it does</h2>
+      <ul class="features">
+        <li>
+          <h3>Every question, one page</h3>
+          <p>Pending questions and allow/deny approvals from all live sessions show up as cards. Pick a choice or type your own answer and send. Multi-question batches and multi-select work too.</p>
+        </li>
+        <li>
+          <h3>You hear about it</h3>
+          <p>A <code>needs you N</code> chip sits in the status bar, and a toast appears when a new question arrives from a session you are not looking at. Questions already waiting at load time are recovered on their own.</p>
+        </li>
+        <li>
+          <h3>See the rest at a glance</h3>
+          <p>Working sessions with their sub-agents, and a Done list with the last message of each finished session. Reply, open, or mark read without hunting through tabs.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section id="install" aria-labelledby="i-h">
+      <h2 id="i-h">Install in three steps</h2>
+      <div class="steps">
+        <ol class="s">
+          <li>Download <code>plugin.js</code> from the repo.</li>
+          <li>Put it in a folder named <code>needs-you-hub</code> under <code>desktop-plugins</code>. The repo is <code>needsyou-hub</code>; the plugin folder keeps the other spelling.</li>
+          <li>In Hermes press <kbd>Ctrl</kbd>+<kbd>K</kbd>, run <strong>Reload desktop plugins</strong>. <strong>Needs You</strong> appears in the sidebar.</li>
+        </ol>
+        <div>
+<pre><code><span class="c"># PowerShell</span>
+$dir = "$env:LOCALAPPDATA\hermes\desktop-plugins\needs-you-hub"
+New-Item -ItemType Directory -Force $dir | Out-Null
+Invoke-WebRequest `
+  https://raw.githubusercontent.com/itstomekk/needsyou-hub/main/plugin.js `
+  -OutFile "$dir\plugin.js"</code></pre>
+          <p class="note">Built against Hermes desktop v0.22.x. No build step, no dependencies.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits" aria-labelledby="l-h">
+      <h2 id="l-h">Limits, in plain words</h2>
+      <ul class="limits">
+        <li>Tested on Windows with desktop v0.22.x. A big app update can break it, because it relies on calls read from the app itself.</li>
+        <li>Passwords and sudo prompts are not covered, only questions and allow/deny approvals.</li>
+        <li>Answer sending is tested against a mocked app. Not every prompt type has been answered live from the page yet.</li>
+        <li>&ldquo;Mark read&rdquo; is the plugin's own memory; the app's sidebar dots are cleared only on a best-effort basis.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <span>MIT licence. Made by <a href="https://github.com/itstomekk">Tomek</a>.</span>
+    <span><a href="https://github.com/itstomekk/needsyou-hub">Source</a> · <a href="https://hermes-agent.nousresearch.com/docs/developer-guide/desktop-plugin-sdk">Desktop plugin SDK</a></span>
+  </footer>
+</div>
+</body>
+</html>
