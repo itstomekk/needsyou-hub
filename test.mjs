@@ -274,3 +274,26 @@ console.log('INBOX PASS')
   await assert.rejects(T.sortPinned({ storage: { getItem: () => '["a"]' }, list: async () => [], reorder: () => {} }), /fewer than 2/)
   console.log('PINSORT PASS')
 }
+
+{
+  // Optional history cutoff: default stays off, but when set it must hide old rows consistently
+  // from Done and the diagnostics fold, and must not strand rows with only started_at.
+  const cutoff = Math.floor(Date.now() / 1000) - 1000
+  const row = (id, t, extra = {}) => ({ id, session_key: id, status: 'idle', source: 'cli', message_count: 3, last_active: t, ...extra })
+  const old = row('old', cutoff - 1)
+  const edge = row('edge', cutoff)
+  const fallback = row('fallback', 0, { started_at: cutoff + 1 })
+  const cron = row('cron', cutoff - 1, { source: 'cron' })
+  const read = row('read', cutoff + 2)
+  const rows = [old, edge, fallback, cron, read]
+  const marks = { read: cutoff + 2 }
+  assert.deepEqual(T.inboxRows(rows, marks, null, 0, cutoff).map(r => r.id), ['fallback', 'edge'])
+  assert.equal(T.doneReason(old, marks, null, 0, cutoff), 'last active before cutoff')
+  assert.deepEqual(T.hiddenRows(rows, marks, null, 0, cutoff).map(x => x.r.id), ['read'])
+  assert.deepEqual(T.inboxRows([old], {}, null, 0).map(r => r.id), ['old'])
+  assert.equal(T.doneReason(old, {}, null, 0), '')
+  assert.deepEqual(T.pruneDismissed({ old: { t: cutoff - 1, n: 1 }, legacy: cutoff - 2, fresh: { t: cutoff, n: 1 } }, cutoff), { fresh: { t: cutoff, n: 1 } })
+  const unchanged = { old: { t: 1, n: 1 } }
+  assert.equal(T.pruneDismissed(unchanged), unchanged)
+  console.log('CUTOFF PASS')
+}

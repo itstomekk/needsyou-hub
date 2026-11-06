@@ -28,6 +28,9 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 const ROUTE = '/needs-you-hub'
 const POLL_MS = 4000
 const STALE_GRACE_MS = 8000
+// Optional Unix timestamp in seconds. Default off: a personal history cutoff is not universal.
+// Edit locally to hide older Done rows; marking read also prunes older read marks.
+const DONE_SINCE_S = null
 const INBOX_MAX = 12
 const STALE_S = 6 * 3600 // a 'working' session with no activity this long is flagged as probably stuck
 
@@ -290,23 +293,39 @@ function isRead(rec, r) {
   return lastAct(r) <= t && (r.message_count || 0) <= n
 }
 
-/** Finished, quiet sessions with something new since the user last marked them read. */
-function inboxRows(rows, dismissed, focusedId, nowS = Date.now() / 1000) {
+/**
+ * Finished, quiet sessions with something new since the user last marked them read.
+ * Cron rows are skipped because scheduled runs would bury human conversations. The optional
+ * cutoff compares the same activity stamp as read marks, including the started_at fallback,
+ * so rows with an empty last_active are not wrongly sunk below it.
+ */
+function inboxRows(rows, dismissed, focusedId, nowS = Date.now() / 1000, cutoff = DONE_SINCE_S) {
   return rows
     .filter(r => {
       if (r.status !== 'idle' || r.source === 'cron' || !(r.message_count > 0)) return false
+      if (cutoff != null && lastAct(r) < cutoff) return false
       return !isRead(dismissed[r.id], r)
     })
     .sort((a, b) => lastAct(b) - lastAct(a))
 }
 
-/** Why a row is NOT in Done (for the diagnostics list). Empty string = it is in Done. */
-function doneReason(r, dismissed, focusedId, nowS = Date.now() / 1000) {
+/**
+ * Why a row is NOT in Done (for the diagnostics list). Empty string = it is in Done.
+ * Keep this branch order aligned with inboxRows: a row must have exactly one visible explanation.
+ */
+function doneReason(r, dismissed, focusedId, nowS = Date.now() / 1000, cutoff = DONE_SINCE_S) {
   if (r.status !== 'idle') return `status is "${r.status}"`
   if (r.source === 'cron') return 'source is cron'
   if (!(r.message_count > 0)) return 'no messages'
+  if (cutoff != null && lastAct(r) < cutoff) return 'last active before cutoff'
   if (isRead(dismissed[r.id], r)) return 'marked read'
   return ''
+}
+
+// Omit old rows from diagnostics too, so a cutoff actually removes the historic backlog.
+function hiddenRows(rows, dismissed, focusedId, nowS = Date.now() / 1000, cutoff = DONE_SINCE_S) {
+  return rows.map(r => ({ r, why: doneReason(r, dismissed, focusedId, nowS, cutoff) }))
+    .filter(x => x.why && x.r.status === 'idle' && (cutoff == null || lastAct(x.r) >= cutoff))
 }
 
 /** The last n paragraphs of the last real assistant message in a session.history payload. */
@@ -464,11 +483,25 @@ function syncFromApp(rows) {
   if (next) $dismissed.set(next)
 }
 
+/**
+ * Drops read marks older than an optional cutoff. Those rows are already filtered out, so the marks
+ * only waste plugin storage. With no cutoff this returns the same map: public installs keep history.
+ */
+function pruneDismissed(map, cutoff = DONE_SINCE_S) {
+  if (cutoff == null) return map
+  const next = { ...map }
+  for (const [id, rec] of Object.entries(next)) {
+    const t = typeof rec === 'object' && rec ? rec.t || 0 : rec
+    if (t < cutoff) delete next[id]
+  }
+  return next
+}
+
 function markRead(rowsToMark) {
   try { syncSidebarRead(rowsToMark) } catch { /* never block our own state */ }
   const next = { ...$dismissed.get() }
   for (const r of rowsToMark) next[r.id] = { t: lastAct(r), n: r.message_count || 0 }
-  $dismissed.set(next)
+  $dismissed.set(pruneDismissed(next))
 }
 
 let inflight = null
@@ -896,9 +929,7 @@ function Page() {
   const nowQ = Date.now() / 1000
   const working = workingAll
   const focusedId = host.state.focusedSessionId.get()
-  const hidden = rows
-    .map(r => ({ r, why: doneReason(r, dismissed, focusedId, nowQ) }))
-    .filter(x => x.why && x.r.status === 'idle')
+  const hidden = hiddenRows(rows, dismissed, focusedId, nowQ)
   const [showAll, setShowAll] = useState(false)
   const done = inboxRows(rows, dismissed, host.state.focusedSessionId.get())
   const shown = showAll ? done : done.slice(0, INBOX_MAX)
@@ -977,7 +1008,7 @@ function Chip() {
 
 // ---------------------------------------------------------------- plugin
 
-export const __test = { sortPinnedIds, sortPinned, reconcileAppUnread, readAppUnread, syncSidebarRead, rowsSig, pollDelay, fetchSessions, stopSession, pendingOf, isRead, justFinished, lastAct, doneReason, inboxRows, lastParagraphs, loadExcerpt, excerptCache, markRead, $dismissed, lastAssistantText, loadOrphan, sendText, itemsFromSnapshot, recoverOrphan, itemFromEvent, staleIds, orphanWaiting, answerFor, allAnswered, sendClarify, sendApproval, findRow, ago, titleOf, stripRec, STALE_GRACE_MS }
+export const __test = { sortPinnedIds, sortPinned, reconcileAppUnread, readAppUnread, syncSidebarRead, rowsSig, pollDelay, fetchSessions, stopSession, pendingOf, isRead, justFinished, lastAct, pruneDismissed, doneReason, inboxRows, hiddenRows, lastParagraphs, loadExcerpt, excerptCache, markRead, $dismissed, lastAssistantText, loadOrphan, sendText, itemsFromSnapshot, recoverOrphan, itemFromEvent, staleIds, orphanWaiting, answerFor, allAnswered, sendClarify, sendApproval, findRow, ago, titleOf, stripRec, STALE_GRACE_MS }
 
 export default {
   id: 'needs-you-hub',

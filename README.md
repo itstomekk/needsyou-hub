@@ -14,7 +14,7 @@ Run five sessions at once and sooner or later one of them stops and waits for yo
 
 - **🙋 Needs you**: every pending question (clarify) and approval (allow or deny) from every live session, as a card. Pick a choice or type your own answer, press send. Multi-question batches and multi-select work too.
 - **⚙️ Working**: sessions that are running right now, with their sub-agents. Reply to one without leaving the page.
-- **✅ Done**: sessions that finished since you last looked, with the last message shown. Reply, open, or **Mark read**.
+- **✅ Done**: sessions that finished since you last looked, with the last message shown. Reply, open, or **Mark read**. A long backlog can be hidden by setting the optional `DONE_SINCE_S` cutoff in `plugin.js` (off by default; see [DEVELOPMENT.md](DEVELOPMENT.md)).
 - **📍 Status bar chip**: `needs you 2` at the bottom of the app. Click it to open the page.
 - **🔔 Toast**: a small notice when a new question arrives from a session you are not looking at.
 - **🔁 Auto-recovery**: questions that were already waiting when the plugin loaded (or when the app restarted) are picked up on their own. A **Load question** button is there as a fallback.
